@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de RH</title>
+<style>
+:root{--bg:#EBF0F6;--sf:#fff;--ink:#1F2A44;--mut:#6B7A93;--ln:#E1E8F2;--a:#2C5FF9;--d:#FD5D6C;--yl:#FDC43F;--rd:#E0364B;--tt:#6F87AE;--trk:#DCE5FB;--sh:0 4px 14px rgba(70,90,150,.10)}
+@media (prefers-color-scheme:dark){:root{--bg:#121933;--sf:#1B2447;--ink:#E8EDFA;--mut:#9AA8C7;--ln:#2A3560;--a:#6C93FF;--d:#FF6F7E;--yl:#FFCB57;--rd:#FF7B88;--tt:#8FA6D0;--trk:#2A3560;--sh:0 4px 14px rgba(0,0,0,.25)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+main{position:relative;max-width:1180px;margin:0 auto;padding:22px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between;margin-bottom:18px}
+h1{font-size:24px;margin:0;letter-spacing:.08em;text-transform:uppercase;color:var(--tt)}
+h2{font-size:13px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.meta{color:var(--mut);font-size:13px}
+select{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--ln);border-radius:20px;padding:6px 14px;box-shadow:var(--sh)}
+select:focus-visible,button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+#demo,#velho{background:var(--yl);color:#2B2A33;padding:8px 14px;border-radius:12px;margin-bottom:14px;font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-bottom:16px}
+.kpi{padding:16px 18px;border-radius:14px;background:#2C5FF9;color:#fff;box-shadow:var(--sh)}
+.kpi b{display:block;font-size:28px;line-height:1.15;white-space:nowrap}
+.kpi span{font-size:14px;font-weight:600}
+.k5{grid-column:span 2}
+.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+.card{min-width:0;background:var(--sf);border-radius:14px;padding:18px;box-shadow:var(--sh)}
+.wide{grid-column:1/-1}
+.leg{display:flex;gap:16px;font-size:13px;color:var(--mut);margin-bottom:6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+svg text{fill:var(--mut);font-size:11px}
+svg .v{fill:var(--ink)}
+.a{fill:var(--a)}.d{fill:var(--d)}
+.row{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin:7px 0;font-size:14px}
+.row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{background:var(--trk);height:12px;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#FDC43F,#FD5D6C);border-radius:6px}
+.row b{text-align:right;font-weight:600}
+.vazio{color:var(--mut);font-size:14px}
+table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 4px;text-align:center;border-bottom:1px solid var(--ln)}
+td{white-space:nowrap}
+td:first-child{white-space:normal;overflow-wrap:anywhere}
+th:first-child,td:first-child{text-align:left;width:22%}
+th .sm{display:none}
+th{font-weight:600;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+th[data-k]{cursor:pointer}th[data-k]:hover{color:var(--ink)}
+td.sel{font-weight:700;color:var(--a)}
+.noprazo{color:var(--a);font-weight:600}.atrasado{color:var(--rd);font-weight:600}
+td.pos{color:var(--mut);width:36px}
+button{font:inherit;font-weight:600;color:#fff;background:var(--a);border:0;border-radius:20px;padding:7px 16px;margin-top:12px;cursor:pointer}
+.hd{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px}.hd h2{margin:0}
+@media (max-width:1100px){th{font-size:10px;letter-spacing:0}}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}.k4{grid-column:span 2}}
+@media (max-width:760px){table{font-size:10px}th,td{padding:6px 1px}th{font-size:9px;letter-spacing:0}th:first-child,td:first-child{width:24%}main{padding:16px 10px 40px}.card{padding:14px 10px}th .lg{display:none}th .sm{display:inline}.grid{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:110px 1fr 60px}}
+@media (max-width:380px){table{font-size:9px}th{font-size:8px}}
+.tl th,.tl td{text-align:right}
+.tl th:first-child,.tl td:first-child{text-align:left;width:34%}
+.tl tbody tr:nth-child(even){background:rgba(120,140,190,.08)}
+.tl tbody tr:hover{background:rgba(44,95,249,.10)}
+.tl tfoot td{font-weight:700;border-top:2px solid var(--ln);border-bottom:0}
+@media (max-width:760px){.tl{font-size:11px}.tl th{font-size:9px}.tl th,.tl td{padding:7px 2px}.tl th:first-child,.tl td:first-child{width:26%}.tl th:last-child,.tl td:last-child{width:28%}}
+.clicavel{cursor:pointer;position:relative;transition:transform .12s}
+.clicavel:hover{transform:translateY(-2px)}
+.clicavel:focus-visible{outline:3px solid var(--yl);outline-offset:2px}
+.clicavel::after{content:"▾";position:absolute;top:10px;right:14px;opacity:.85}
+.pop{position:absolute;z-index:20;background:var(--sf);color:var(--ink);border-radius:14px;box-shadow:0 10px 30px rgba(20,35,80,.28);padding:14px 16px;max-height:min(60vh,420px);overflow:auto}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.ph b{font-size:14px}
+.px{background:none;color:var(--mut);padding:0 6px;margin:0;font-size:22px;line-height:1;border-radius:6px}
+.pr{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--ln);font-size:14px}
+.pr:last-child{border-bottom:0}
+.pod{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end;max-width:560px;margin:10px auto 20px}
+.pc{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.pa{position:relative;margin-bottom:6px}
+.av{display:grid;place-items:center;border-radius:50%;background:var(--bg);color:var(--ink);font-weight:700;border:3px solid var(--a)}
+.av.g{width:76px;height:76px;font-size:25px;border-color:var(--yl)}
+.av.s{width:58px;height:58px;font-size:19px}
+.bd{position:absolute;top:-2px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--d);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;border:2px solid var(--sf)}
+.pv{font-weight:700;margin-bottom:6px;font-size:15px}
+.pb{width:100%;border-radius:12px 12px 0 0;padding:10px 6px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:8px;color:#fff;background:#2C5FF9;min-width:0}
+.p1 .pb{background:#FDC43F;color:#2B2A33;height:160px}
+.p2 .pb{height:116px}.p3 .pb{height:96px}
+.pn{font-size:12px;font-weight:600;overflow-wrap:anywhere;line-height:1.25}
+.pb svg{width:34px;height:34px}
+.rt{table-layout:auto}
+.rt th:first-child,.rt td:first-child{width:56px;text-align:left}
+.rt th:nth-child(2),.rt td:nth-child(2){width:64px;text-align:center}
+.rt th:nth-child(3),.rt td:nth-child(3){text-align:left;white-space:normal;overflow-wrap:anywhere}
+.rt th:nth-child(n+4),.rt td:nth-child(n+4){text-align:right;white-space:nowrap}
+.rt td:nth-child(4){font-weight:700;color:var(--a)}
+.rt td:last-child{font-weight:600}
+.rt .av{width:34px;height:34px;font-size:13px;border-width:2px;margin:0 auto}
+@media (max-width:760px){.rt{font-size:13px}.rt th{font-size:10px}.rt th,.rt td{padding:7px 4px}.rt th:first-child,.rt td:first-child{width:36px}.rt th:nth-child(2),.rt td:nth-child(2){width:46px}.pn{font-size:11px}.av.g{width:64px;height:64px;font-size:21px}.av.s{width:50px;height:50px;font-size:17px}}
+.pv small{display:block;font-weight:600;font-size:12px;color:var(--mut)}
+.lk{cursor:pointer;border-bottom:1px dotted currentColor}
+.lk:focus-visible{outline:2px solid var(--a);outline-offset:3px;border-radius:3px}
+.av{position:relative;overflow:hidden}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#acesso{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center}
+#acesso[hidden]{display:none}
+.acbox{background:var(--sf);border-radius:14px;box-shadow:var(--sh);padding:26px;width:min(92vw,360px);display:grid;gap:12px}
+.acbox h1{font-size:20px}.acbox p{margin:0}
+.acbox input[type=password]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:10px;padding:10px 12px}
+.acbox input:focus-visible{outline:2px solid var(--a)}
+.acbox button{margin:0;padding:10px 16px}.acbox button:disabled{opacity:.6}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div><h1>Painel de RH</h1><div class="meta" id="ts"></div></div>
+  <span class="meta"><label>Departamento <select id="dep"></select></label> <label>Mês <select id="mes" title="Filtra horas extras, valor a pagar e o ranking de atrasos. Presença e atrasos de hoje não mudam."></select></label></span>
+</header>
+<div id="acesso" hidden><div class="acbox"><h1>Painel de RH</h1><p class="meta">Digite a senha de acesso.</p>
+<input id="acsenha" type="password" autocomplete="current-password" aria-label="Senha de acesso">
+<label class="meta"><input type="checkbox" id="aclembrar"> Lembrar neste aparelho</label>
+<div id="acerro" class="atrasado" role="alert"></div><button id="acbtn">Entrar</button></div></div>
+<div id="velho" hidden>Os dados estão desatualizados há mais de 3 horas. Verifique se o computador que atualiza o painel está ligado.</div>
+<div id="demo" hidden>Exibindo dados de exemplo. Rode o coletor e abra esta página por um servidor para ver os dados reais.</div>
+<section class="kpis" id="kpis"></section>
+<section class="grid">
+  <div class="card wide"><h2>Ranking de atrasos no mês</h2><div id="rk"></div></div>
+  <div class="card wide"><h2 id="t2">Funcionários · horas, saldo e valor a pagar</h2><div id="c2"></div></div>
+  <div class="card wide"><div class="hd"><h2 id="tbt">Batidas de hoje</h2><label class="meta">Dia <select id="dbat" aria-label="Escolher o dia das batidas"></select></label></div><div id="c5"></div></div>
+</section>
+<div id="pop" class="pop" role="dialog" aria-label="Lista" hidden></div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const D=s=>s?new Date(s.slice(0,10)+'T00:00:00'):null;
+const iso=d=>d.toISOString().slice(0,10);
+const isoL=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const fmtH=m=>(m<0?'-':'')+Math.floor(Math.abs(m)/60)+'h'+String(Math.round(Math.abs(m)%60)).padStart(2,'0');
+const brl=n=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const curMes=()=>isoL(hoje).slice(0,7);
+const mesSel=()=>$('#mes').value||curMes();
+const nomeMes=m=>{const [y,n]=m.split('-').map(Number),t=new Date(y,n-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});return t[0].toUpperCase()+t.slice(1)};
+const ext=p=>{const m=mesSel();return p.meses&&p.meses[m]?(p.meses[m].extras||0):(m==curMes()?(p.extras||0):0)};
+const fal=p=>{const m=mesSel();return p.meses&&p.meses[m]?(p.meses[m].faltas||0):(m==curMes()?(p.faltas||0):0)};
+const sal=p=>{const m=mesSel();return p.meses&&p.meses[m]?p.meses[m].saldo:(m==curMes()?p.saldo:null)};
+const pag=p=>{const m=mesSel();return p.meses&&p.meses[m]?p.meses[m].a_pagar:(m==curMes()?p.a_pagar:null)};
+const hoje=new Date(new Date().toDateString());
+const mesmoMes=(d,m)=>d&&d.getFullYear()==m.getFullYear()&&d.getMonth()==m.getMonth();
+const ativoEm=(f,d)=>D(f.admissao)<=d&&(!f.demissao||D(f.demissao)>d);
+
+function demo(){
+  let s=7;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  const deps=['Administrativo','Produção','Financeiro','Comercial','Atendimento'],F=[];
+  for(let i=0;i<64;i++){
+    const a=new Date(hoje);a.setDate(a.getDate()-Math.floor(r()*r()*2200)-5);
+    let d=null;
+    if(r()<.22){d=new Date(a);d.setDate(d.getDate()+30+Math.floor(r()*Math.max(1,(hoje-a)/864e5-30)));if(d>hoje)d=null}
+    F.push({nome:'Funcionário '+(i+1),admissao:iso(a),demissao:d?iso(d):null,departamento:deps[Math.floor(r()*5)]});
+  }
+  const js=['Atestado','Férias','Licença','Folga','Banco de horas'],A=[];
+  for(let i=0;i<30;i++){const a=new Date(hoje);a.setDate(a.getDate()-Math.floor(r()*340)+10);const b=new Date(a);b.setDate(b.getDate()+Math.floor(r()*12));A.push({inicio:iso(a),fim:iso(b),justificativa:js[Math.floor(r()*5)]})}
+  const pd={};deps.forEach(d=>{const n=F.filter(f=>!f.demissao&&f.departamento==d).length;pd[d]={Normais:n*9600,'Extras 50%':n*Math.floor(r()*400),Faltas:n*Math.floor(r()*240),Atrasos:n*Math.floor(r()*120)}});
+  const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  const C=F.filter(f=>!f.demissao).map(f=>{const ex=Math.floor(r()*r()*1500),w=Array.from({length:7},()=>r()),sw=w.reduce((a,b)=>a+b),ed=w.map(x=>Math.floor(ex*x/sw)),tx=11+r()*12,pr=r()<.88,m=pr?475+Math.floor(r()*r()*50):null,at=pr&&m>490;return{nome:f.nome,departamento:f.departamento,presente:pr,entrada_hoje:pr?hm(m):null,atrasado_hoje:at,atraso_min:at?m-490:0,extras:ex,a_pagar:Math.round(ex/60*tx*100)/100,extras_dia:ed,a_pagar_dia:ed.map(m=>Math.round(m/60*tx*100)/100),saldo:Math.floor((r()-.35)*900)}});
+  C.forEach(p=>{p.meses={};p.faltas=Math.floor(r()*r()*500);p.saldo=p.extras-p.faltas;const tx=p.extras?p.a_pagar/(p.extras/60):15;for(let i=0;i<6;i++){const k=isoL(new Date(hoje.getFullYear(),hoje.getMonth()-i,1)).slice(0,7),e=i==0?p.extras:Math.floor(r()*r()*1500),f=i==0?p.faltas:Math.floor(r()*r()*500);p.meses[k]={extras:e,a_pagar:Math.round(e/60*tx*100)/100,saldo:e-f,faltas:f}}});
+  const ks=['Entrada1','Saida1','Entrada2','Saida2','Entrada3','Saida3','Entrada4','Saida4'];
+  const dias=[];for(let d=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);d<=hoje;d.setDate(d.getDate()+1))dias.push(isoL(new Date(d)));
+  const B=C.map(p=>{const dd={};dias.forEach(v=>{
+    const dw=new Date(v+'T00:00:00').getDay();if(dw==0||dw==6)return;const b={};
+    if(v==isoL(hoje)){if(p.entrada_hoje){const e=+p.entrada_hoje.slice(0,2)*60+ +p.entrada_hoje.slice(3);[e,e+90,e+105,e+225,e+285,e+400,e+415,e+520].slice(0,Math.max(1,Math.floor(r()*9))).forEach((m,j)=>b[ks[j]]=hm(m))}else if(r()<.5){ks.forEach(k=>b[k]='Ferias ')}}
+    else{const e=475+Math.floor(r()*r()*40);[e,e+90,e+105,e+225,e+285,e+400,e+415,e+520].forEach((m,j)=>b[ks[j]]=hm(m))}
+    if(Object.keys(b).length)dd[v]=b});return{nome:p.nome,departamento:p.departamento,dias:dd}});
+  return{gerado_em:new Date().toISOString().slice(0,16),funcionarios:F,afastamentos:A,colaboradores:C,batidas:B,regra:{entrada:'08:00',tolerancia:10},calculos:{mes:iso(hoje).slice(0,7),processados:F.filter(f=>!f.demissao).length,total:F.filter(f=>!f.demissao).length,por_departamento:pd}};
+}
+async function decifra(env,senha){
+  const b=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(senha),'PBKDF2',false,['deriveKey']);
+  const chave=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b(env.s),iterations:env.k,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:b(env.i)},chave,b(env.c))));
+}
+function pedeSenha(env){
+  return new Promise(res=>{
+    const box=$('#acesso'),inp=$('#acsenha'),err=$('#acerro'),lem=$('#aclembrar'),btn=$('#acbtn');
+    box.hidden=false;inp.focus();
+    const entrar=async()=>{
+      const s=inp.value;if(!s)return;btn.disabled=true;err.textContent='';
+      try{const d=await decifra(env,s);
+        sessionStorage.setItem('painel_s',s);
+        if(lem.checked)localStorage.setItem('painel_s',s);else localStorage.removeItem('painel_s');
+        box.hidden=true;res(d)}
+      catch(e){err.textContent='Senha incorreta.';inp.select()}
+      btn.disabled=false};
+    btn.onclick=entrar;inp.onkeydown=e=>{if(e.key=='Enter')entrar()};
+  });
+}
+async function abreCifrado(env){
+  const salvo=sessionStorage.getItem('painel_s')||localStorage.getItem('painel_s');
+  if(salvo){try{return await decifra(env,salvo)}catch(e){sessionStorage.removeItem('painel_s');localStorage.removeItem('painel_s')}}
+  return pedeSenha(env);
+}
+async function load(){
+  try{const r=await fetch('data.json?'+Date.now());if(r.ok)return await r.json()}catch(e){}
+  try{const r=await fetch('data.enc?'+Date.now());if(r.ok)return await abreCifrado(await r.json())}catch(e){}
+  $('#demo').hidden=false;return demo();
+}
+function hbar(rows,fv=x=>x,vazio='Sem dados no período.'){
+  if(!rows.length)return `<div class="vazio">${vazio}</div>`;
+  const mx=Math.max(1,...rows.map(r=>Math.abs(r[1])));
+  return rows.map(([l,v])=>`<div class="row"><span title="${esc(l)}">${esc(l)}</span><div class="bar"><i style="width:${Math.max(2,Math.abs(v)/mx*100)}%"></i></div><b>${fv(v)}</b></div>`).join('');
+}
+function render(data,dep){
+  const F=data.funcionarios.filter(f=>dep=='*'||f.departamento==dep);
+  const ativos=F.filter(f=>!f.demissao);
+  const afHoje=data.afastamentos.filter(a=>D(a.inicio)<=hoje&&D(a.fim)>=hoje).length;
+  const C=(data.colaboradores||[]).filter(p=>dep=='*'||p.departamento==dep);
+  const semPres=C.length&&C.every(p=>p.presente==null);
+  const soma=k=>C.reduce((a,p)=>a+(p[k]||0),0);
+  const atr=C.filter(p=>p.atrasado_hoje).length;
+  const sufMes=mesSel()==curMes()?'':' · '+nomeMes(mesSel());
+  fecharPop();
+  const porHora=(a,b)=>(a.entrada_hoje||'99:99').localeCompare(b.entrada_hoje||'99:99');
+  POP.presentes=C.filter(p=>p.presente).sort(porHora);
+  POP.atrasados=C.filter(p=>p.atrasado_hoje).sort((a,b)=>b.atraso_min-a.atraso_min);
+  $('#kpis').innerHTML=[
+    [ativos.length,'Total de funcionários'],
+    [semPres||!C.length?'—':C.filter(p=>p.presente).length,'Presentes hoje'],
+    [afHoje,'Funcionários afastados'],
+    [semPres||!C.length?'—':atr,'Atrasados hoje'],
+    [C.length?fmtH(C.reduce((a,p)=>a+ext(p),0)):'—','Horas extras no mês'+sufMes],
+    [C.length?brl(C.reduce((a,p)=>a+(pag(p)||0),0)):'—','A pagar das horas extras'+sufMes+(C.length&&C.every(p=>!('a_pagar' in p))?' · rode o coletor de novo':(C.some(p=>p.a_pagar==null)?' · '+C.filter(p=>p.a_pagar==null).length+' sem valor/hora':''))]
+  ].map(([v,l],i)=>{const pop=semPres||!C.length?null:{1:'presentes',3:'atrasados'}[i];
+    return `<div class="kpi k${i}${pop?' clicavel':''}"${pop?` data-pop="${pop}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" title="Clique para ver a lista"`:''}><b>${v}</b><span>${l}</span></div>`}).join('');
+
+
+  const LH=[...C].sort((a,b)=>ext(b)-ext(a));
+  $('#t2').textContent='Funcionários · horas, saldo e valor a pagar'+sufMes;
+  $('#c2').innerHTML=!LH.length?'<div class="vazio">Os cálculos do mês ainda não foram coletados.</div>'
+    :`<table class="tl"><thead><tr><th>Funcionário</th><th>Horas extras</th><th>Horas falta</th><th>Saldo final</th><th>A pagar</th></tr></thead><tbody>`
+     +LH.map(p=>`<tr><td>${esc(p.nome)}</td><td>${fmtH(ext(p))}</td><td>${fmtH(fal(p))}</td><td>${sal(p)==null?'<span class="vazio">—</span>':fmtH(sal(p))}</td><td>${pag(p)==null?'<span class="vazio">—</span>':brl(pag(p))}</td></tr>`).join('')
+     +`</tbody><tfoot><tr><td>Total</td><td>${fmtH(C.reduce((a,p)=>a+ext(p),0))}</td><td>${fmtH(C.reduce((a,p)=>a+fal(p),0))}</td><td>${fmtH(C.reduce((a,p)=>a+(sal(p)||0),0))}</td><td>${brl(C.reduce((a,p)=>a+(pag(p)||0),0))}</td></tr></tfoot></table>`;
+  rankAtrasos(data,dep);
+  tabBatidas(data,dep);
+}
+const POP={presentes:[],atrasados:[]};let POPCARD=null;
+function fecharPop(){$('#pop').hidden=true;if(POPCARD){POPCARD.setAttribute('aria-expanded','false');POPCARD=null}}
+function abrirPop(card){
+  const k=card.dataset.pop,L=POP[k],at=k=='atrasados';
+  $('#pop').innerHTML=`<div class="ph"><b>${at?'Chegaram atrasados hoje':'Presentes hoje'} · ${L.length}</b><button class="px" aria-label="Fechar">×</button></div>`
+    +(L.length?L.map(p=>`<div class="pr"><span>${esc(p.nome)}</span><span class="${p.atrasado_hoje?'atrasado':'noprazo'}">${p.entrada_hoje||'—'}${at?' (atraso '+hhmm(p.atraso_min)+')':''}</span></div>`).join('')
+      :`<div class="vazio">${at?'Ninguém chegou atrasado hoje.':'Ninguém bateu o ponto ainda.'}</div>`);
+  posPop(card);
+}
+function posPop(card){
+  const pr=$('#pop'),mr=$('main').getBoundingClientRect(),cr=card.getBoundingClientRect(),w=Math.min(360,mr.width-20);
+  pr.hidden=false;pr.style.width=w+'px';
+  pr.style.top=(cr.bottom-mr.top+8)+'px';
+  pr.style.left=Math.max(10,Math.min(cr.left-mr.left,mr.width-w-10))+'px';
+  card.setAttribute('aria-expanded','true');POPCARD=card;
+}
+let RK=[];
+function abrirPopRk(card){
+  const x=RK[+card.dataset.rk];if(!x)return;
+  $('#pop').innerHTML=`<div class="ph"><b>${esc(x.nome)} · ${x.n} ${x.n==1?'atraso':'atrasos'}</b><button class="px" aria-label="Fechar">×</button></div>`
+    +x.itens.map(i=>{const [y,m,d]=i.d.split('-').map(Number);
+      return `<div class="pr"><span>${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')} · ${new Date(y,m-1,d).toLocaleDateString('pt-BR',{weekday:'long'})}</span><span class="atrasado">${i.h} (atraso ${hhmm(i.at)})</span></div>`}).join('')
+    +`<div class="pr"><b>Total de atraso</b><b class="atrasado">${hhmm(x.tot)}</b></div>`;
+  posPop(card);
+}
+let REGRA={entrada:'08:00',tolerancia:10};
+function limite(){const [x,y]=REGRA.entrada.split(':');const t=+x*60+ +y+REGRA.tolerancia;return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}
+const hhmm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const SLOTS=[['Entrada','Entrada1','Ent.'],['Intervalo 1','Saida1','Int. 1'],['Volta intervalo 1','Entrada2','Volta 1'],['Ida almoço','Saida2','Ida alm.'],['Volta almoço','Entrada3','Volta alm.'],['Intervalo 2','Saida3','Int. 2'],['Volta intervalo 2','Entrada4','Volta 2'],['Saída','Saida4','Saída']];
+const ehHora=v=>/^\d{1,2}:\d{2}$/.test(v||'');
+function opcoesDias(){
+  const hojeL=isoL(hoje);
+  return [new Date(hoje.getFullYear(),hoje.getMonth()-1,1),new Date(hoje.getFullYear(),hoje.getMonth(),1)].map(m0=>{
+    const ult=m0.getMonth()==hoje.getMonth()?hoje.getDate():new Date(m0.getFullYear(),m0.getMonth()+1,0).getDate();
+    let o='';
+    for(let d=1;d<=ult;d++){const dt=new Date(m0.getFullYear(),m0.getMonth(),d),v=isoL(dt);
+      o+=`<option value="${v}">${String(d).padStart(2,'0')} – ${dt.toLocaleDateString('pt-BR',{weekday:'long'})}${v==hojeL?' (hoje)':''}</option>`}
+    return `<optgroup label="${m0.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}">${o}</optgroup>`;
+  }).join('');
+}
+function tabBatidas(data,dep){
+  const box=$('#c5'),lim=limite(),hojeL=isoL(hoje),sel=$('#dbat').value||hojeL;
+  const [y,m,d]=sel.split('-').map(Number),dt=new Date(y,m-1,d);
+  $('#tbt').textContent=sel==hojeL?'Batidas de hoje':'Batidas de '+String(d).padStart(2,'0')+'/'+String(m).padStart(2,'0')+' · '+dt.toLocaleDateString('pt-BR',{weekday:'long'});
+  if(!data.batidas){box.innerHTML='<div class="vazio">Rode o coletor de novo para carregar as batidas.</div>';return}
+  const get=p=>p.dias?(p.dias[sel]||{}):(sel==hojeL?(p.b||{}):{});
+  const L=data.batidas.filter(p=>dep=='*'||p.departamento==dep).sort((a,b)=>String(a.nome).localeCompare(String(b.nome),'pt-BR'));
+  if(!L.length||L.every(p=>!Object.keys(get(p)).length)){box.innerHTML='<div class="vazio">Sem batidas registradas neste dia.</div>';return}
+  const linha=p=>{
+    const b=get(p),vals=SLOTS.map(([,k])=>String(b[k]||'').trim());
+    const txt=vals.find(v=>v&&!ehHora(v));
+    const cels=!vals.some(ehHora)&&txt?`<td colspan="8"><span class="vazio">${esc(txt)}</span></td>`
+      :vals.map((v,i)=>{
+        if(!ehHora(v))return `<td><span class="vazio">${v?esc(v):'—'}</span></td>`;
+        const t=v.padStart(5,'0');
+        return `<td${i==0?` class="${t>lim?'atrasado':'noprazo'}"`:''}>${t}</td>`;
+      }).join('');
+    return `<tr><td>${esc(p.nome)}</td>${cels}</tr>`;
+  };
+  box.innerHTML=`<div class="tb"><table><thead><tr><th>Funcionário</th>${SLOTS.map(s=>`<th><span class="lg">${s[0]}</span><span class="sm">${s[2]}</span></th>`).join('')}</tr></thead><tbody>${L.map(linha).join('')}</tbody></table></div>`;
+}
+const iniciais=n=>{const t=String(n||'').trim().split(/\s+/);return ((t[0]||'')[0]||'')+(t.length>1?t[t.length-1][0]:'')};
+const encCam=c=>String(c).split('/').map(encodeURIComponent).join('/');
+function fotoErro(img){const l=(img.dataset.t||'').split(',').filter(Boolean),n=l.shift();if(n){img.dataset.t=l.join(',');img.src=img.dataset.b+'.'+n}else img.remove()}
+const avatar=(p,c)=>{
+  let img='';
+  if(p.foto)img=`<img src="${esc(String(p.foto).startsWith('data:')?p.foto:encCam(p.foto))}" alt="" onerror="fotoErro(this)">`;
+  else if(!('foto' in p)){const b=encCam('fotos/'+p.nome);img=`<img src="${esc(b)}.jpg" data-b="${esc(b)}" data-t="png,jpeg,webp" alt="" onerror="fotoErro(this)">`}
+  return `<span class="av${c?' '+c:''}">${esc(iniciais(p.nome).toUpperCase())}${img}</span>`};
+const nomeCurto=n=>{const t=String(n||'').trim().split(/\s+/);return t.length>1?t[0]+' '+t[t.length-1]:t[0]||''};
+const ICONE_RELOGIO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+function rankAtrasos(data,dep){
+  const box=$('#rk'),lim=limite(),mes=mesSel();
+  const mesNome=nomeMes(mes);
+  const [lh,lm]=lim.split(':').map(Number),limMin=lh*60+lm;
+  RK=[];
+  if(!data.batidas||!data.batidas.some(p=>p.dias)){box.innerHTML='<div class="vazio">Rode o coletor de novo para carregar o histórico de batidas do mês.</div>';return}
+  const dias=new Set(),L=data.batidas.filter(p=>dep=='*'||p.departamento==dep).map(p=>{
+    let n=0,tot=0;const itens=[];
+    Object.entries(p.dias||{}).sort().forEach(([d,b])=>{
+      if(d.slice(0,7)!=mes)return;
+      if(Object.keys(b).length)dias.add(d);
+      const v=String(b.Entrada1||'').trim();
+      if(!ehHora(v))return;
+      const t=v.padStart(5,'0'),[hh,mm]=t.split(':').map(Number),at=hh*60+mm-limMin;
+      if(at>0){n++;tot+=at;itens.push({d,h:t,at})}
+    });
+    const r={nome:p.nome,n,tot,itens};if('foto' in p)r.foto=p.foto;return r;
+  }).filter(x=>x.n>0).sort((a,b)=>b.n-a.n||b.tot-a.tot||String(a.nome).localeCompare(String(b.nome),'pt-BR'));
+  RK=L;
+  if(!dias.size){box.innerHTML='<div class="vazio">Sem batidas registradas em '+mesNome+' no histórico.</div>';return}
+  if(!L.length){box.innerHTML='<div class="vazio">Ninguém chegou atrasado neste mês.</div>';return}
+  const txt=n=>n+(n==1?' atraso':' atrasos');
+  const lk=(i,t)=>`<span class="lk" data-rk="${i}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" title="Ver os dias e horários">${t}</span>`;
+  const col=(p,pos)=>!p?'<div></div>':`<div class="pc p${pos}"><div class="pa">${avatar(p,pos==1?'g':'s')}<span class="bd">${pos}</span></div><div class="pv">${lk(pos==1?0:pos==2?1:2,txt(p.n))}<small>Total ${hhmm(p.tot)}</small></div><div class="pb"><div class="pn" title="${esc(p.nome)}">${esc(nomeCurto(p.nome))}</div>${ICONE_RELOGIO}</div></div>`;
+  const resto=L.slice(3);
+  box.innerHTML=`<div class="pod">${col(L[1],2)}${col(L[0],1)}${col(L[2],3)}</div>`
+    +(resto.length?`<table class="rt"><thead><tr><th>Rank</th><th>Foto</th><th>Funcionário</th><th>Atrasos</th><th>Total de atraso</th></tr></thead><tbody>${resto.map((p,i)=>`<tr><td>${i+4}</td><td>${avatar(p,'')}</td><td>${esc(p.nome)}</td><td>${lk(i+3,p.n)}</td><td>${hhmm(p.tot)}</td></tr>`).join('')}</tbody></table>`:'');
+}
+function mostraIdade(g){
+  const t=new Date(g),min=Math.max(0,Math.round((Date.now()-t)/60000));
+  $('#ts').textContent='Atualizado em '+t.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · há '+(min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')+' min');
+  $('#velho').hidden=!(min>180);
+}
+(async()=>{
+  const data=await load();
+  mostraIdade(data.gerado_em);
+  setInterval(()=>mostraIdade(data.gerado_em),60000);
+  // atualização automática: a cada 5 min recarrega os dados, mas só se ninguém estiver mexendo no painel
+  let ultimo=Date.now();
+  ['click','keydown','touchstart','mousemove','scroll'].forEach(ev=>document.addEventListener(ev,()=>{ultimo=Date.now()},{passive:true}));
+  setInterval(()=>{if(Date.now()-ultimo>90000)location.reload()},300000);
+  const deps=[...new Set(data.funcionarios.map(f=>f.departamento))].sort();
+  $('#dep').innerHTML='<option value="*">Todos</option>'+deps.map(d=>`<option>${esc(d)}</option>`).join('');
+  REGRA=data.regra||REGRA;
+  $('#kpis').onclick=e=>{const c=e.target.closest('[data-pop]');if(!c)return;if(POPCARD===c)fecharPop();else{fecharPop();abrirPop(c)}};
+  $('#kpis').onkeydown=e=>{const c=e.target.closest('[data-pop]');if(c&&(e.key=='Enter'||e.key==' ')){e.preventDefault();c.click()}};
+  $('#pop').onclick=e=>{if(e.target.closest('.px'))fecharPop()};
+  $('#rk').onclick=e=>{const c=e.target.closest('[data-rk]');if(!c)return;if(POPCARD===c)fecharPop();else{fecharPop();abrirPopRk(c)}};
+  $('#rk').onkeydown=e=>{const c=e.target.closest('[data-rk]');if(c&&(e.key=='Enter'||e.key==' ')){e.preventDefault();c.click()}};
+  document.addEventListener('click',e=>{if(!e.target.closest('#pop')&&!e.target.closest('[data-pop],[data-rk]'))fecharPop()});
+  document.addEventListener('keydown',e=>{if(e.key=='Escape')fecharPop()});
+  $('#dbat').innerHTML=opcoesDias();
+  $('#dbat').value=isoL(hoje);
+  $('#dbat').onchange=()=>tabBatidas(data,$('#dep').value);
+  const ms=new Set([curMes()]);(data.colaboradores||[]).forEach(p=>Object.keys(p.meses||{}).forEach(k=>ms.add(k)));
+  $('#mes').innerHTML=[...ms].sort().reverse().map(k=>`<option value="${k}">${nomeMes(k)}</option>`).join('');
+  $('#mes').value=curMes();
+  $('#mes').onchange=()=>render(data,$('#dep').value);
+  $('#dep').onchange=e=>render(data,e.target.value);
+  render(data,'*');
+})();
+</script>
+</body>
+</html>

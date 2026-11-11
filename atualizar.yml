@@ -1,0 +1,74 @@
+name: Atualizar painel
+
+on:
+  schedule:
+    # a cada 30 minutos, das 06h às 20h30 no horário de Brasília (o GitHub conta em UTC)
+    - cron: "*/30 9-23 * * *"
+  workflow_dispatch:   # botão "Run workflow" para atualizar na hora
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: painel
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/Fortaleza
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Recupera o estado criptografado (cálculos e fotos já obtidos)
+        uses: actions/cache@v4
+        with:
+          path: estado.enc
+          key: estado-${{ github.run_id }}
+          restore-keys: estado-
+
+      - name: Coleta os dados e gera o arquivo criptografado
+        env:
+          SECULLUM_USER: ${{ secrets.SECULLUM_USER }}
+          SECULLUM_PASS: ${{ secrets.SECULLUM_PASS }}
+          PAINEL_SENHA: ${{ secrets.PAINEL_SENHA }}
+          VALORES_HORA: ${{ secrets.VALORES_HORA }}
+          EXCLUIR_NOMES: ${{ secrets.EXCLUIR_NOMES }}
+        run: |
+          if [ -z "$PAINEL_SENHA" ]; then
+            echo "::error::Cadastre o Secret PAINEL_SENHA (a senha de acesso ao painel)"
+            exit 1
+          fi
+          python coletor_ponto_web.py
+
+      - name: Monta o site
+        run: |
+          mkdir -p site
+          cp index.html site/index.html
+          touch site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publicar:
+    needs: atualizar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

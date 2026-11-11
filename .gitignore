@@ -1,0 +1,10 @@
+# nada disto pode ir para o GitHub (dados pessoais e segredos)
+data.json
+calc_cache.json
+estado.enc
+fotos/
+valores_hora.json
+excluir.txt
+*.log
+site/
+__pycache__/
