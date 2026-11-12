@@ -102,12 +102,13 @@ button{font:inherit;font-weight:600;color:#fff;background:var(--a);border:0;bord
 .acbox input[type=password]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:10px;padding:10px 12px}
 .acbox input:focus-visible{outline:2px solid var(--a)}
 .acbox button{margin:0;padding:10px 16px}.acbox button:disabled{opacity:.6}
+#cplink{background:none;color:var(--a);border:1px solid var(--ln);padding:3px 12px;margin:0 0 0 10px;font-size:12px;font-weight:600}
 </style>
 </head>
 <body>
 <main>
 <header>
-  <div><h1>Painel de RH</h1><div class="meta" id="ts"></div></div>
+  <div><h1>Painel de RH</h1><div class="meta"><span id="ts"></span><button id="cplink" hidden title="Copia um link que abre o painel sem pedir a senha. Envie só para quem pode ver.">Copiar link de acesso direto</button></div></div>
   <span class="meta"><label>Departamento <select id="dep"></select></label> <label>Mês <select id="mes" title="Filtra horas extras, valor a pagar e o ranking de atrasos. Presença e atrasos de hoje não mudam."></select></label></span>
 </header>
 <div id="acesso" hidden><div class="acbox"><h1>Painel de RH</h1><p class="meta">Digite a senha de acesso.</p>
@@ -182,15 +183,22 @@ function pedeSenha(env){
       try{const d=await decifra(env,s);
         sessionStorage.setItem('painel_s',s);
         if(lem.checked)localStorage.setItem('painel_s',s);else localStorage.removeItem('painel_s');
-        box.hidden=true;res(d)}
+        box.hidden=true;SENHA_ATUAL=s;res(d)}
       catch(e){err.textContent='Senha incorreta.';inp.select()}
       btn.disabled=false};
     btn.onclick=entrar;inp.onkeydown=e=>{if(e.key=='Enter')entrar()};
   });
 }
+let SENHA_ATUAL=null;
 async function abreCifrado(env){
+  const m=location.hash.match(/^#s=(.+)$/);
+  if(m){
+    let s='';try{s=decodeURIComponent(m[1])}catch(e){s=m[1]}
+    history.replaceState(null,'',location.pathname+location.search);   // tira a senha da barra de endereço
+    try{const d=await decifra(env,s);sessionStorage.setItem('painel_s',s);localStorage.setItem('painel_s',s);SENHA_ATUAL=s;return d}catch(e){}
+  }
   const salvo=sessionStorage.getItem('painel_s')||localStorage.getItem('painel_s');
-  if(salvo){try{return await decifra(env,salvo)}catch(e){sessionStorage.removeItem('painel_s');localStorage.removeItem('painel_s')}}
+  if(salvo){try{const d=await decifra(env,salvo);SENHA_ATUAL=salvo;return d}catch(e){sessionStorage.removeItem('painel_s');localStorage.removeItem('painel_s')}}
   return pedeSenha(env);
 }
 async function load(){
@@ -335,19 +343,27 @@ function rankAtrasos(data,dep){
   box.innerHTML=`<div class="pod">${col(L[1],2)}${col(L[0],1)}${col(L[2],3)}</div>`
     +(resto.length?`<table class="rt"><thead><tr><th>Rank</th><th>Foto</th><th>Funcionário</th><th>Atrasos</th><th>Total de atraso</th></tr></thead><tbody>${resto.map((p,i)=>`<tr><td>${i+4}</td><td>${avatar(p,'')}</td><td>${esc(p.nome)}</td><td>${lk(i+3,p.n)}</td><td>${hhmm(p.tot)}</td></tr>`).join('')}</tbody></table>`:'');
 }
-function mostraIdade(g){
+function mostraIdade(g,im){
   const t=new Date(g),min=Math.max(0,Math.round((Date.now()-t)/60000));
   $('#ts').textContent='Atualizado em '+t.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · há '+(min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')+' min');
-  $('#velho').hidden=!(min>180);
+  const lim=Math.max(15,4*(im||30));
+  $('#velho').textContent='Os dados estão desatualizados há mais de '+(lim>=120?(lim/60)+' horas':lim+' minutos')+'. Verifique se a atualização automática está funcionando.';
+  $('#velho').hidden=!(min>lim);
 }
 (async()=>{
   const data=await load();
-  mostraIdade(data.gerado_em);
-  setInterval(()=>mostraIdade(data.gerado_em),60000);
-  // atualização automática: a cada 5 min recarrega os dados, mas só se ninguém estiver mexendo no painel
+  mostraIdade(data.gerado_em,data.intervalo_min);
+  if(SENHA_ATUAL){
+    const bt=$('#cplink');bt.hidden=false;
+    bt.onclick=async()=>{const link=location.origin+location.pathname+'#s='+encodeURIComponent(SENHA_ATUAL);
+      try{await navigator.clipboard.writeText(link);bt.textContent='Link copiado!'}catch(e){prompt('Copie o link:',link)}
+      setTimeout(()=>{bt.textContent='Copiar link de acesso direto'},2500)};
+  }
+  setInterval(()=>mostraIdade(data.gerado_em,data.intervalo_min),60000);
+  // atualização automática: a cada 2 min recarrega os dados, mas só se ninguém estiver mexendo no painel
   let ultimo=Date.now();
   ['click','keydown','touchstart','mousemove','scroll'].forEach(ev=>document.addEventListener(ev,()=>{ultimo=Date.now()},{passive:true}));
-  setInterval(()=>{if(Date.now()-ultimo>90000)location.reload()},300000);
+  setInterval(()=>{if(Date.now()-ultimo>60000)location.reload()},120000);
   const deps=[...new Set(data.funcionarios.map(f=>f.departamento))].sort();
   $('#dep').innerHTML='<option value="*">Todos</option>'+deps.map(d=>`<option>${esc(d)}</option>`).join('');
   REGRA=data.regra||REGRA;

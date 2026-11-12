@@ -378,24 +378,6 @@ try:
 except Exception as e:
     print("Batidas indisponíveis:", e)
 
-# 3b) Histórico de batidas, mês a mês (para o filtro de dia, o filtro de mês e o ranking de atrasos)
-batidas_dias = {}  # FuncionarioId -> {"aaaa-mm-dd": {campo: horário/texto}}
-linhas_hist = 0
-for p in meses_lista:
-    try:
-        hist = call("GET", "Batidas", params={"dataInicio": p.isoformat(), "dataFim": min(ultimo_dia(p), hoje).isoformat()})
-    except Exception as e:
-        print(f"Histórico de batidas de {p:%Y-%m} indisponível:", e)
-        continue
-    linhas_hist += len(hist)
-    for b in hist:
-        d = str(b.get("Data") or "")[:10]
-        campos = {k: str(b.get(k) or "").strip() for k in CAMPOS_BATIDA if str(b.get(k) or "").strip()}
-        if d and campos:
-            batidas_dias.setdefault(b.get("FuncionarioId"), {})[d] = campos
-print(f"Histórico de batidas: {linhas_hist} linhas em {MESES} mês(es)")
-
-# 4) Cálculos por funcionário ativo e por mês (cache + limite de chamadas por hora)
 def carrega_estado():
     if NUVEM:
         if os.path.exists(ESTADO_ENC):
@@ -418,6 +400,38 @@ def salva_estado(est):
 
 estado = carrega_estado()
 cache = estado["cache"]
+
+
+# 3b) Histórico de batidas, mês a mês. O mês atual é buscado a cada rodada; os meses passados, só 1 vez por dia.
+batidas_dias = {}  # FuncionarioId -> {"aaaa-mm-dd": {campo: horário/texto}}
+hist_estado = estado.setdefault("hist", {})
+linhas_hist = chamadas_hist = 0
+for p in meses_lista:
+    ym = p.strftime("%Y-%m")
+    guardado = hist_estado.get(ym)
+    if p != meses_lista[0] and guardado and (agora - dt.datetime.fromisoformat(guardado["ts"])).total_seconds() < 86400:
+        linhas = guardado["linhas"]
+    else:
+        try:
+            hist = call("GET", "Batidas", params={"dataInicio": p.isoformat(), "dataFim": min(ultimo_dia(p), hoje).isoformat()})
+        except Exception as e:
+            print(f"Histórico de batidas de {ym} indisponível:", e)
+            linhas = guardado["linhas"] if guardado else []
+        else:
+            chamadas_hist += 1
+            linhas = []
+            for b in hist:
+                d = str(b.get("Data") or "")[:10]
+                campos = {k: str(b.get(k) or "").strip() for k in CAMPOS_BATIDA if str(b.get(k) or "").strip()}
+                if d and campos:
+                    linhas.append([b.get("FuncionarioId"), d, campos])
+            hist_estado[ym] = {"ts": agora.isoformat(), "linhas": linhas}
+    linhas_hist += len(linhas)
+    for fid, d, campos in linhas:
+        batidas_dias.setdefault(fid, {})[d] = campos
+print(f"Histórico de batidas: {linhas_hist} linhas em {MESES} mês(es) ({chamadas_hist} consulta(s) à API)")
+
+# 4) Cálculos por funcionário ativo e por mês (cache + limite de chamadas por hora)
 chave = lambda f: f"{f['Cpf']}|{mes}"  # mês atual
 chave_m = lambda f, ym: f"{f['Cpf']}|{ym}"
 
@@ -568,10 +582,13 @@ if sobra:
 if NUVEM:
     # na nuvem as fotos NÃO ficam em arquivos: vão reduzidas, dentro dos dados criptografados
     fotos_nuvem = estado.setdefault("fotos", {})
+    fotos_sem = estado.setdefault("fotos_sem", {})  # quem não tem foto cadastrada: tenta de novo só 1 vez por dia
     baixadas = falhas = 0
     for f in func:
         chave_f = norm(f.get("Nome"))
         if f.get("Demissao") or not f.get("Id") or (chave_f in fotos_nuvem and not ATUALIZAR_FOTOS):
+            continue
+        if chave_f in fotos_sem and (agora - dt.datetime.fromisoformat(fotos_sem[chave_f])).total_seconds() < 86400:
             continue
         if baixadas >= MAX_FOTOS or falhas >= 3:
             break
@@ -585,6 +602,8 @@ if NUVEM:
         if mini:
             fotos_nuvem[chave_f] = mini
             baixadas += 1
+        else:
+            fotos_sem[chave_f] = agora.isoformat()
     n_ativos = [f for f in func if not f.get("Demissao")]
     print(f"Fotos: {sum(1 for f in n_ativos if norm(f.get('Nome')) in fotos_nuvem)} de {len(n_ativos)} funcionários ativos com foto ({baixadas} baixadas agora)")
 
@@ -640,6 +659,7 @@ batidas_hoje = [{"nome": f.get("Nome"), "departamento": f.get("DepartamentoDescr
 
 saida = {
     "gerado_em": dt.datetime.now().astimezone().isoformat(timespec="minutes"),
+    "intervalo_min": int(os.environ.get("INTERVALO_MIN", "30")),
     "funcionarios": funcionarios, "afastamentos": afastamentos, "colaboradores": colaboradores, "batidas": batidas_hoje,
     "regra": {"entrada": f"{LIMITE_ENTRADA // 60:02d}:{LIMITE_ENTRADA % 60:02d}", "tolerancia": TOLERANCIA},
     "calculos": {"mes": mes, "processados": processados, "total": len(ativos),
