@@ -236,7 +236,7 @@ function render(data,dep){
 
 
   const LH=[...C].sort((a,b)=>ext(b)-ext(a));
-  $('#t2').textContent='Funcionários · horas, saldo e valor a pagar'+sufMes;
+  $('#t2').textContent='Funcionários · horas, saldo e valor a pagar'+sufMes+(mesSel()==curMes()&&data.calculo_ate?(data.calculo_ate.slice(0,7)<curMes()?' · sem dias fechados ainda':' · até '+data.calculo_ate.split('-').reverse().slice(0,2).join('/')):'');
   $('#c2').innerHTML=!LH.length?'<div class="vazio">Os cálculos do mês ainda não foram coletados.</div>'
     :`<table class="tl"><thead><tr><th>Funcionário</th><th>Horas extras</th><th>Horas falta</th><th>Saldo final</th><th>A pagar</th></tr></thead><tbody>`
      +LH.map(p=>`<tr><td>${esc(p.nome)}</td><td>${fmtH(ext(p))}</td><td>${fmtH(fal(p))}</td><td>${sal(p)==null?'<span class="vazio">—</span>':fmtH(sal(p))}</td><td>${pag(p)==null?'<span class="vazio">—</span>':brl(pag(p))}</td></tr>`).join('')

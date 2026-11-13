@@ -115,7 +115,7 @@ else:
     print("ATENÇÃO: valores_hora.json não encontrado em", ARQ_VALORES)
 
 
-SIG_SALDO = f"{COLUNA_SALDO}|{SALDO_MODO}|{int(SALDO_ATRASOS)}"  # muda quando a coluna/modo do saldo muda -> refaz os cálculos
+SIG_SALDO = f"{COLUNA_SALDO}|{SALDO_MODO}|{int(SALDO_ATRASOS)}|ate-ontem"  # muda quando a coluna/modo do saldo muda -> refaz os cálculos
 DIAG = norm(os.environ.get("DIAGNOSTICO", ""))  # parte do nome de um funcionário, para investigar o saldo
 SALDO_ESPERADO = os.environ.get("SALDO_ESPERADO", "")  # saldo que o sistema mostra para ele, ex.: 6:47
 
@@ -297,7 +297,8 @@ def data_da_linha(linha, idx_data):
     return dt.date(int(m[1]), int(m[2]), int(m[3])) if m else None
 
 
-hoje = dt.date.today()
+hoje = dt.date.fromisoformat(os.environ["PAINEL_HOJE"]) if os.environ.get("PAINEL_HOJE") else dt.date.today()  # PAINEL_HOJE: só para testes
+ontem = hoje - dt.timedelta(days=1)
 agora = dt.datetime.now()
 mes = hoje.strftime("%Y-%m")
 ini_mes = hoje.replace(day=1)
@@ -320,6 +321,12 @@ def ultimo_dia(p):
 
 
 meses_lista = [primeiro_dia(hoje, i) for i in range(MESES)]  # do mês atual ao mais antigo
+
+
+def fim_calculo(p):
+    """Último dia considerado nos cálculos do mês p. Mês atual: só até ONTEM, porque o dia de hoje ainda não terminou
+    (faltas e saldo ficariam distorcidos). Meses passados: o mês inteiro."""
+    return min(ultimo_dia(p), ontem)
 
 # 1) Funcionários
 func = call("GET", "Funcionarios")
@@ -361,6 +368,7 @@ afastamentos = [{
 # 3) Presença de hoje: Batidas devolve uma linha por funcionário/dia (FuncionarioId + Entrada1..Saida5).
 #    Presente = há ao menos um horário (HH:mm) nas colunas de entrada/saída de hoje ("Ferias" etc. não contam).
 presentes, entrada1, batidas_func = None, {}, {}
+bat = []
 try:
     bat = call("GET", "Batidas", params={"dataInicio": hoje.isoformat(), "dataFim": hoje.isoformat()})
     com_id = {b.get("FuncionarioId") for b in bat}
@@ -377,6 +385,8 @@ try:
             batidas_func[b.get("FuncionarioId")] = {k: str(b.get(k) or "").strip() for k in CAMPOS_BATIDA if k in b}
 except Exception as e:
     print("Batidas indisponíveis:", e)
+print(f"Coleta das {agora:%d/%m %H:%M} | batidas de hoje: {len(bat)} linhas lidas, "
+      f"{'sem dados' if presentes is None else len(presentes)} funcionário(s) com horário registrado")
 
 def carrega_estado():
     if NUVEM:
@@ -455,13 +465,15 @@ def diagnostico(f, cols, r):
     print("=== fim do diagnóstico ===\n")
 
 
-def desatualizado(c, atual, f=None):
+def desatualizado(c, atual, f=None, p=None):
     if atual and DIAG and f is not None and DIAG in norm(f.get("Nome")):
         return True  # investigando este funcionário: sempre refaz
     if c.get("x", {}).get("sig", "BSaldo|total") != SIG_SALDO:
         return True
     if not c.get("ts") or "extras_dia" not in c.get("x", {}):
         return True
+    if c.get("x", {}).get("ate") != fim_calculo(p or meses_lista[0]).isoformat():
+        return True  # virou o dia (ou o mês): o cálculo passa a incluir o que acabou de fechar
     idade = (agora - dt.datetime.fromisoformat(c["ts"])).total_seconds()
     return idade >= (3000 if atual else 86400)  # mês atual: ~50 min; meses passados: 1 dia
 
@@ -470,15 +482,21 @@ tarefas = []
 for p in meses_lista:
     for f in ativos:
         c = cache.get(chave_m(f, p.strftime("%Y-%m")), {})
-        if desatualizado(c, p == meses_lista[0], f):
+        if desatualizado(c, p == meses_lista[0], f, p):
             tarefas.append((p != meses_lista[0], c.get("ts", ""), f, p))
 tarefas.sort(key=lambda t: (t[0], t[1]))  # mês atual primeiro; em cada grupo, os mais antigos primeiro
 feitas, vistas = 0, False
 for _, _, f, p in tarefas[:MAX_CALC]:
     ym = p.strftime("%Y-%m")
+    fim = fim_calculo(p)
+    if fim < p:  # 1º dia do mês: ainda não há nenhum dia fechado neste mês
+        cache[chave_m(f, ym)] = {"d": hoje.isoformat(), "ts": agora.isoformat(), "dep": f.get("DepartamentoDescricao") or "Sem departamento",
+                                 "nome": f.get("Nome"), "t": {}, "x": {"extras": 0, "atrasos": 0, "normais": 0, "faltas": 0, "faltas_dias": 0,
+                                 "faltou_hoje": False, "sig": SIG_SALDO, "ate": fim.isoformat(), "saldo": 0, "extras_dia": [0] * 7}}
+        continue
     try:
         r = call("POST", "Calcular", json={
-            "FuncionarioCpf": f["Cpf"], "DataInicial": p.isoformat(), "DataFinal": ultimo_dia(p).isoformat()})
+            "FuncionarioCpf": f["Cpf"], "DataInicial": p.isoformat(), "DataFinal": fim.isoformat()})
         cols = r.get("Colunas", [])
         if not vistas:
             print("Colunas do cálculo:", cols)
@@ -494,6 +512,7 @@ for _, _, f, p in tarefas[:MAX_CALC]:
                 if t:
                     x[t] += m  # extras, atrasos, normais e faltas (em minutos)
         x["sig"] = SIG_SALDO
+        x["ate"] = fim.isoformat()
         x["saldo"] = tot.get(COLUNA_SALDO)  # modo "total" (coluna do relatório); None se não existir/vier vazia
         if SALDO_MODO == "calculado":  # horas extras - horas de falta (e - atrasos, se SALDO_ATRASOS=1)
             x["saldo"] = x["extras"] - x["faltas"] - (x["atrasos"] if SALDO_ATRASOS else 0)
@@ -660,6 +679,7 @@ batidas_hoje = [{"nome": f.get("Nome"), "departamento": f.get("DepartamentoDescr
 saida = {
     "gerado_em": dt.datetime.now().astimezone().isoformat(timespec="minutes"),
     "intervalo_min": int(os.environ.get("INTERVALO_MIN", "30")),
+    "calculo_ate": fim_calculo(meses_lista[0]).isoformat(),  # horas, faltas e saldo do mês atual valem até este dia
     "funcionarios": funcionarios, "afastamentos": afastamentos, "colaboradores": colaboradores, "batidas": batidas_hoje,
     "regra": {"entrada": f"{LIMITE_ENTRADA // 60:02d}:{LIMITE_ENTRADA % 60:02d}", "tolerancia": TOLERANCIA},
     "calculos": {"mes": mes, "processados": processados, "total": len(ativos),
