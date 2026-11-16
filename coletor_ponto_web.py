@@ -38,6 +38,12 @@ if NUVEM and len(SENHA_PAINEL) < 12:
     sys.exit("A senha do painel (PAINEL_SENHA) precisa ter pelo menos 12 caracteres. Use uma frase longa.")
 
 
+def privado(*args, **kw):
+    """print() que NÃO escreve nada no modo nuvem: o registro (log) do GitHub Actions é público e não pode ter dados de pessoas."""
+    if not NUVEM:
+        print(*args, **kw)
+
+
 def _chave(senha, sal, iteracoes):
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -246,7 +252,7 @@ tok = login()
 if not BANCO:
     b = requests.get(f"{AUTH}/ContasSecullumExterno/ListarBancos", timeout=30,
                      headers={"Authorization": f"Bearer {tok}"}).json()
-    print("Bancos disponíveis:", [(x["id"], x.get("nome")) for x in b])
+    privado("Bancos disponíveis:", [(x["id"], x.get("nome")) for x in b])
     BANCO = re.sub(r"[^A-Za-z0-9]", "", str(b[0]["id"]))
 
 
@@ -336,16 +342,22 @@ ARQ_EXCLUIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "excluir.
 regras_excluir = list(EXCLUIR_PADRAO) + [n.strip() for n in os.environ.get("EXCLUIR_NOMES", "").split(";") if n.strip()]
 if os.path.exists(ARQ_EXCLUIR):
     regras_excluir += [l.strip() for l in open(ARQ_EXCLUIR, encoding="utf-8") if l.strip() and not l.strip().startswith("#")]
-for regra in dict.fromkeys(regras_excluir):
+excluidos = 0
+for i, regra in enumerate(dict.fromkeys(regras_excluir), 1):
     palavras = set(norm(regra).split())
     achados = [f for f in func if palavras <= set(norm(f.get("Nome")).split())]
     if len(achados) == 1:
         func = [f for f in func if f is not achados[0]]
-        print(f"Excluído dos cálculos: {achados[0].get('Nome')}  (regra: {regra!r})")
+        excluidos += 1
+        privado(f"Excluído dos cálculos: {achados[0].get('Nome')}  (regra: {regra!r})")
     elif achados:
-        print(f"AVISO: a regra {regra!r} serve para {len(achados)} funcionários {[a.get('Nome') for a in achados]}; escreva o nome completo. Ninguém foi excluído por ela.")
+        print(f"AVISO: a regra de exclusão nº {i} serve para {len(achados)} funcionários; escreva o nome completo. Ninguém foi excluído por ela.")
+        privado(f"  (regra {regra!r}: {[a.get('Nome') for a in achados]})")
     else:
-        print(f"AVISO: a regra {regra!r} não casou com nenhum funcionário.")
+        print(f"AVISO: a regra de exclusão nº {i} não casou com nenhum funcionário.")
+        privado(f"  (regra {regra!r})")
+if regras_excluir:
+    print(f"Funcionários excluídos dos cálculos: {excluidos} de {len(set(regras_excluir))} regra(s)")
 funcionarios = [{
     "nome": f.get("Nome"), "admissao": (f.get("Admissao") or "")[:10] or None,
     "demissao": (f.get("Demissao") or "")[:10] or None,
@@ -448,21 +460,21 @@ chave_m = lambda f, ym: f"{f['Cpf']}|{ym}"
 
 def diagnostico(f, cols, r):
     """Mostra todas as colunas do cálculo de um funcionário e quais valem o saldo que o sistema exibe."""
-    print(f"\n=== DIAGNÓSTICO: {f.get('Nome')} (mês {mes}) ===")
+    privado(f"\n=== DIAGNÓSTICO: {f.get('Nome')} (mês {mes}) ===")
     tot = {c: v for c, v in zip(cols, r.get("Totais", [])) if v}
     ult = {}
     for l in r.get("Linhas", []):
         for c, v in zip(cols, l.get("Value", [])):
             if v and c != "Data" and minutos(v) is not None:
                 ult[c] = v
-    print("Totais do mês:", tot)
-    print("Último valor diário (colunas com valor):", ult)
+    privado("Totais do mês:", tot)
+    privado("Último valor diário (colunas com valor):", ult)
     if SALDO_ESPERADO:
         alvo = minutos(SALDO_ESPERADO if ":" in SALDO_ESPERADO else SALDO_ESPERADO + ":00")
         ach = [c + " (totais)" for c, v in tot.items() if minutos(v) is not None and abs(minutos(v)) == abs(alvo)]
         ach += [c + " (último dia)" for c, v in ult.items() if abs(minutos(v)) == abs(alvo)]
-        print(f"Colunas que valem {SALDO_ESPERADO}:", ach or "nenhuma")
-    print("=== fim do diagnóstico ===\n")
+        privado(f"Colunas que valem {SALDO_ESPERADO}:", ach or "nenhuma")
+    privado("=== fim do diagnóstico ===\n")
 
 
 def desatualizado(c, atual, f=None, p=None):
@@ -500,7 +512,7 @@ for _, _, f, p in tarefas[:MAX_CALC]:
         cols = r.get("Colunas", [])
         if not vistas:
             print("Colunas do cálculo:", cols)
-            print("Totais do primeiro funcionário:", {k: v for k, v in zip(cols, r.get("Totais", [])) if v})
+            privado("Totais do primeiro funcionário:", {k: v for k, v in zip(cols, r.get("Totais", [])) if v})
             vistas = True
         tot = {}
         x = {"extras": 0, "atrasos": 0, "normais": 0, "faltas": 0, "faltas_dias": 0, "faltou_hoje": False}
@@ -582,20 +594,20 @@ for f in ativos:
         "saldo": x.get("saldo"), "atrasos": x.get("atrasos", 0),
         "normais": x.get("normais", 0), "faltas_dias": x.get("faltas_dias", 0)})
 
-print("\nHoras extras e valor a pagar por funcionário:")
+privado("\nHoras extras e valor a pagar por funcionário:")
 for z in sorted(colaboradores, key=lambda z: -z["extras"]):
     valor = "SEM VALOR/HORA" if z["a_pagar"] is None else "R$ %.2f" % z["a_pagar"]
     fh = lambda m: ("-" if (m or 0) < 0 else "") + f"{abs(m or 0) // 60}h{abs(m or 0) % 60:02d}"
-    print(f'  {z["nome"][:36]:36} extras {fh(z["extras"]):>7} | falta {fh(z["faltas"]):>7} | saldo {fh(z["saldo"]):>8} | {valor}')
-print("  Total a pagar: R$ %.2f" % sum(z["a_pagar"] or 0 for z in colaboradores))
+    privado(f'  {z["nome"][:36]:36} extras {fh(z["extras"]):>7} | falta {fh(z["faltas"]):>7} | saldo {fh(z["saldo"]):>8} | {valor}')
+privado("  Total a pagar: R$ %.2f" % sum(z["a_pagar"] or 0 for z in colaboradores))
 if colaboradores and not any(z["extras"] for z in colaboradores):
     print("AVISO: nenhuma hora extra encontrada. Confira os nomes das colunas do cálculo impressos acima.")
 sem_valor = [c["nome"] for c in colaboradores if c["a_pagar"] is None]
 if sem_valor:
-    print("Sem valor da hora cadastrado (fora do total a pagar):", sem_valor)
+    privado("Sem valor da hora cadastrado (fora do total a pagar):", sem_valor)
 sobra = [k for k in VALORES if k not in usados]
 if sobra:
-    print("Nomes de valores_hora.json sem funcionário correspondente (confira a grafia):", sobra)
+    privado("Nomes de valores_hora.json sem funcionário correspondente (confira a grafia):", sobra)
 
 # 5) Fotos
 if NUVEM:
@@ -659,10 +671,10 @@ else:
     print(f"Fotos: {len(fotos_arq)} arquivo(s) na pasta | {len(ligadas)} de {len(nomes_ativos)} funcionários ativos com foto ({baixadas} baixadas agora)")
     sem_foto = [n for n in nomes_ativos if n not in ligadas]
     if sem_foto:
-        print("Funcionários sem foto:", sem_foto[:25])
+        privado("Funcionários sem foto:", sem_foto[:25])
     orfas = [a for a in fotos_arq.values() if a not in set(ligadas.values())]
     if orfas:
-        print("Arquivos da pasta que não casaram com nenhum funcionário (confira o nome):", orfas[:25])
+        privado("Arquivos da pasta que não casaram com nenhum funcionário (confira o nome):", orfas[:25])
 
 
 def dias_de(f):
