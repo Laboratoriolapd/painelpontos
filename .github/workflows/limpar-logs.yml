@@ -1,0 +1,30 @@
+name: Limpar execuções antigas
+
+# Apaga o histórico de execuções (e os registros/logs) do repositório. Rode uma vez à mão:
+# Ações > Limpar execuções antigas > Executar fluxo de trabalho.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  limpar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apaga todas as execuções anteriores
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ATUAL: ${{ github.run_id }}
+        run: |
+          gh api --paginate "repos/$REPO/actions/runs?per_page=100" --jq '.workflow_runs[].id' > ids.txt
+          total=0
+          while read -r id; do
+            if [ "$id" != "$ATUAL" ]; then
+              gh api -X DELETE "repos/$REPO/actions/runs/$id" > /dev/null 2>&1 && total=$((total+1)) || true
+            fi
+          done < ids.txt
+          echo "Execuções apagadas: $total"
