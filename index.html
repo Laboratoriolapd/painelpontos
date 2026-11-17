@@ -158,7 +158,7 @@ function demo(){
   const pd={};deps.forEach(d=>{const n=F.filter(f=>!f.demissao&&f.departamento==d).length;pd[d]={Normais:n*9600,'Extras 50%':n*Math.floor(r()*400),Faltas:n*Math.floor(r()*240),Atrasos:n*Math.floor(r()*120)}});
   const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
   const C=F.filter(f=>!f.demissao).map(f=>{const ex=Math.floor(r()*r()*1500),w=Array.from({length:7},()=>r()),sw=w.reduce((a,b)=>a+b),ed=w.map(x=>Math.floor(ex*x/sw)),tx=11+r()*12,pr=r()<.88,m=pr?475+Math.floor(r()*r()*50):null,at=pr&&m>490;return{nome:f.nome,departamento:f.departamento,presente:pr,entrada_hoje:pr?hm(m):null,atrasado_hoje:at,atraso_min:at?m-490:0,extras:ex,a_pagar:Math.round(ex/60*tx*100)/100,extras_dia:ed,a_pagar_dia:ed.map(m=>Math.round(m/60*tx*100)/100),saldo:Math.floor((r()-.35)*900)}});
-  C.forEach(p=>{p.meses={};p.faltas=Math.floor(r()*r()*500);p.saldo=p.extras-p.faltas;const tx=p.extras?p.a_pagar/(p.extras/60):15;for(let i=0;i<6;i++){const k=isoL(new Date(hoje.getFullYear(),hoje.getMonth()-i,1)).slice(0,7),e=i==0?p.extras:Math.floor(r()*r()*1500),f=i==0?p.faltas:Math.floor(r()*r()*500);p.meses[k]={extras:e,a_pagar:Math.round(e/60*tx*100)/100,saldo:e-f,faltas:f}}});
+  C.forEach(p=>{p.meses={};p.faltas=Math.floor(r()*r()*500);p.saldo=p.extras-p.faltas;const tx=p.extras?p.a_pagar/(p.extras/60):15;p.a_pagar=Math.round(Math.max(0,p.saldo)/60*tx*100)/100;for(let i=0;i<6;i++){const k=isoL(new Date(hoje.getFullYear(),hoje.getMonth()-i,1)).slice(0,7),e=i==0?p.extras:Math.floor(r()*r()*1500),f=i==0?p.faltas:Math.floor(r()*r()*500);p.meses[k]={extras:e,a_pagar:Math.round(Math.max(0,e-f)/60*tx*100)/100,saldo:e-f,faltas:f}}});
   const ks=['Entrada1','Saida1','Entrada2','Saida2','Entrada3','Saida3','Entrada4','Saida4'];
   const dias=[];for(let d=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);d<=hoje;d.setDate(d.getDate()+1))dias.push(isoL(new Date(d)));
   const B=C.map(p=>{const dd={};dias.forEach(v=>{
@@ -230,7 +230,7 @@ function render(data,dep){
     [afHoje,'Funcionários afastados'],
     [semPres||!C.length?'—':atr,'Atrasados hoje'],
     [C.length?fmtH(C.reduce((a,p)=>a+ext(p),0)):'—','Horas extras no mês'+sufMes],
-    [C.length?brl(C.reduce((a,p)=>a+(pag(p)||0),0)):'—','A pagar das horas extras'+sufMes+(C.length&&C.every(p=>!('a_pagar' in p))?' · rode o coletor de novo':(C.some(p=>p.a_pagar==null)?' · '+C.filter(p=>p.a_pagar==null).length+' sem valor/hora':''))]
+    [C.length?brl(C.reduce((a,p)=>a+(pag(p)||0),0)):'—','A pagar (saldo final)'+sufMes+(C.length&&C.every(p=>!('a_pagar' in p))?' · rode o coletor de novo':(C.some(p=>p.a_pagar==null)?' · '+C.filter(p=>p.a_pagar==null).length+' sem valor/hora':''))]
   ].map(([v,l],i)=>{const pop=semPres||!C.length?null:{1:'presentes',3:'atrasados'}[i];
     return `<div class="kpi k${i}${pop?' clicavel':''}"${pop?` data-pop="${pop}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" title="Clique para ver a lista"`:''}><b>${v}</b><span>${l}</span></div>`}).join('');
 

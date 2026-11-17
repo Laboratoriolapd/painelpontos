@@ -477,6 +477,14 @@ def diagnostico(f, cols, r):
     privado("=== fim do diagnóstico ===\n")
 
 
+def valor_a_pagar(saldo_min, taxa):
+    """Valor a pagar = saldo final (horas extras - horas de falta) x valor da hora do funcionário.
+    Saldo negativo não gera pagamento (R$ 0,00); sem valor da hora cadastrado = None."""
+    if taxa is None or saldo_min is None:
+        return None
+    return round(max(saldo_min, 0) / 60 * taxa, 2)
+
+
 def desatualizado(c, atual, f=None, p=None):
     if atual and DIAG and f is not None and DIAG in norm(f.get("Nome")):
         return True  # investigando este funcionário: sempre refaz
@@ -582,7 +590,8 @@ for f in ativos:
         cm = cache.get(chave_m(f, p.strftime("%Y-%m")))
         if cm:
             em = cm.get("x", {}).get("extras", 0)
-            meses[p.strftime("%Y-%m")] = {"extras": em, "a_pagar": None if taxa is None else round(em / 60 * taxa, 2), "saldo": cm.get("x", {}).get("saldo"), "faltas": cm.get("x", {}).get("faltas", 0)}
+            sd = cm.get("x", {}).get("saldo")
+            meses[p.strftime("%Y-%m")] = {"extras": em, "a_pagar": valor_a_pagar(sd, taxa), "saldo": sd, "faltas": cm.get("x", {}).get("faltas", 0)}
     colaboradores.append({
         "nome": c["nome"], "departamento": c["dep"],
         "presente": None if presentes is None else (f.get("Id") in presentes),
@@ -590,7 +599,7 @@ for f in ativos:
         "atrasado_hoje": atrasado, "atraso_min": h - LIMITE_ENTRADA - TOLERANCIA if atrasado else 0,
         "faltou_hoje": bool(x.get("faltou_hoje")) and c["d"] == hoje.isoformat(),
         "extras": x.get("extras", 0), "faltas": x.get("faltas", 0), "extras_dia": ed, "meses": meses,
-        "a_pagar_dia": None if taxa is None else [round(m / 60 * taxa, 2) for m in ed], "a_pagar": None if taxa is None else round(x.get("extras", 0) / 60 * taxa, 2),
+        "a_pagar": valor_a_pagar(x.get("saldo"), taxa),
         "saldo": x.get("saldo"), "atrasos": x.get("atrasos", 0),
         "normais": x.get("normais", 0), "faltas_dias": x.get("faltas_dias", 0)})
 
