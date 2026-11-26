@@ -202,8 +202,8 @@ async function abreCifrado(env){
   return pedeSenha(env);
 }
 async function load(){
-  try{const r=await fetch('data.json?'+Date.now());if(r.ok)return await r.json()}catch(e){}
-  try{const r=await fetch('data.enc?'+Date.now());if(r.ok)return await abreCifrado(await r.json())}catch(e){}
+  try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});if(r.ok)return await r.json()}catch(e){}
+  try{const r=await fetch('data.enc?'+Date.now(),{cache:'no-store'});if(r.ok)return await abreCifrado(await r.json())}catch(e){}
   $('#demo').hidden=false;return demo();
 }
 function hbar(rows,fv=x=>x,vazio='Sem dados no período.'){
@@ -343,9 +343,10 @@ function rankAtrasos(data,dep){
   box.innerHTML=`<div class="pod">${col(L[1],2)}${col(L[0],1)}${col(L[2],3)}</div>`
     +(resto.length?`<table class="rt"><thead><tr><th>Rank</th><th>Foto</th><th>Funcionário</th><th>Atrasos</th><th>Total de atraso</th></tr></thead><tbody>${resto.map((p,i)=>`<tr><td>${i+4}</td><td>${avatar(p,'')}</td><td>${esc(p.nome)}</td><td>${lk(i+3,p.n)}</td><td>${hhmm(p.tot)}</td></tr>`).join('')}</tbody></table>`:'');
 }
+let PUBLICADO='';
 function mostraIdade(g,im){
   const t=new Date(g),min=Math.max(0,Math.round((Date.now()-t)/60000));
-  $('#ts').textContent='Atualizado em '+t.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · há '+(min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')+' min');
+  $('#ts').textContent='Atualizado em '+t.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · há '+(min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')+' min')+(PUBLICADO?' · site publicado às '+PUBLICADO:'');
   const lim=Math.max(15,4*(im||30));
   $('#velho').textContent='Os dados estão desatualizados há mais de '+(lim>=120?(lim/60)+' horas':lim+' minutos')+'. Verifique se a atualização automática está funcionando.';
   $('#velho').hidden=!(min>lim);
@@ -359,6 +360,9 @@ function mostraIdade(g,im){
       try{await navigator.clipboard.writeText(link);bt.textContent='Link copiado!'}catch(e){prompt('Copie o link:',link)}
       setTimeout(()=>{bt.textContent='Copiar link de acesso direto'},2500)};
   }
+  // hora em que o SITE foi publicado pela automação (arquivo status.json, sem dados de pessoas)
+  fetch('status.json?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+    if(j&&j.publicado_em){PUBLICADO=new Date(j.publicado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});mostraIdade(data.gerado_em,data.intervalo_min)}}).catch(()=>{});
   setInterval(()=>mostraIdade(data.gerado_em,data.intervalo_min),60000);
   // atualização automática: a cada 2 min recarrega os dados, mas só se ninguém estiver mexendo no painel
   let ultimo=Date.now();
