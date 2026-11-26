@@ -57,6 +57,7 @@ jobs:
           mkdir -p site
           cp index.html site/index.html
           touch site/.nojekyll
+          echo "{\"publicado_em\":\"$(date -Iseconds)\",\"execucao\":\"${{ github.run_id }}\"}" > site/status.json
 
       - uses: actions/configure-pages@v5
 
