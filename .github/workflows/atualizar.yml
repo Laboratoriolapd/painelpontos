@@ -18,6 +18,7 @@ concurrency:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # se algo travar, a execução é cancelada sozinha e não bloqueia as seguintes
     env:
       TZ: America/Fortaleza
       INTERVALO_MIN: "5"
@@ -68,6 +69,7 @@ jobs:
   publicar:
     needs: atualizar
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
